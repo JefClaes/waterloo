@@ -35,7 +35,7 @@ let main argv =
             Console.ForegroundColor <- ConsoleColor.Yellow
             printfn "Arbitraged events %A" (arbitrageResults |> Seq.length)
             Console.ForegroundColor <- ConsoleColor.Green
-            if ((arbitrageResults |> Seq.length) > 0) then
+            if ((arbitrageResults |> Seq.filter (fun x -> x.Success) |> Seq.length) > 0) then
                   for i in 1 .. 5 do
                     Console.Beep(1500, 1000);
             for r in arbitrageResults do

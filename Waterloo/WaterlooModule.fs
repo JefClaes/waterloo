@@ -26,32 +26,32 @@
         { Bookie = Napoleon; Events = events }
             
     let convertBingoalFeed ( bingoalFeed : Waterloo.Bingoal.RootObject ) =
-        let tennis = 
-            bingoalFeed.sports 
-            |> Seq.filter (fun x -> x.sport = "TENNIS") 
-            |> Seq.nth 0
-        let options = 
-            tennis.bets 
-            |> Seq.map (fun x -> x.subbets |> Seq.filter (fun y -> y.active && y.bettype = 44) |> Seq.map (fun z -> z.options))
-            |> Seq.concat 
-        let events = 
-            options 
-            |> Seq.map (fun x -> 
-                (
-                    let quoteToOdd (quot : string) = 
-                        Convert.ToInt32(Convert.ToDecimal(quot.Replace(".", ",")) * 1000M) 
+        let tennis = bingoalFeed.sports |> Seq.filter (fun x -> x.sport = "TENNIS")
+        
+        if (tennis |> Seq.length < 1) then
+            { Bookie = Bingoal; Events = Seq.empty }
+        else 
+            let options = 
+                (Seq.nth 0 tennis).bets               
+                |> Seq.map (fun x -> x.subbets |> Seq.filter (fun y -> y.active && y.bettype = 44) |> Seq.map (fun z -> z.options))
+                |> Seq.concat 
+            let events = 
+                options 
+                |> Seq.map (fun x -> 
+                    (
+                        let quoteToOdd (quot : string) = 
+                            Convert.ToInt32(Convert.ToDecimal(quot.Replace(".", ",")) * 1000M) 
 
-                    let o = x |> Seq.toList
-                    let home = o |> Seq.nth 0
-                    let away = o |> Seq.nth 1
+                        let o = x |> Seq.toList
+                        let home = o |> Seq.nth 0
+                        let away = o |> Seq.nth 1
                     
-                    { 
-                        Home = home.name
-                        Away = away.name                                 
-                        Bet = { Odds1 = home.quot |> quoteToOdd; Odds2 = away.quot |> quoteToOdd }                       
-                    }
-                ))
-        { Bookie = Bingoal; Events = events }
+                        {   
+                            Home = home.name; Away = away.name                                 
+                            Bet = { Odds1 = home.quot |> quoteToOdd; Odds2 = away.quot |> quoteToOdd }                       
+                        }
+                    ))
+            { Bookie = Bingoal; Events = events }
         
     type MatchedBet = { Bet : Bet; Bookie : Bookie; }
     type MatchedEvent = { Home : string; Away : string; Bets : seq<MatchedBet> }     
@@ -71,7 +71,7 @@
         |> Seq.filter (fun x -> x.IsSome)
         |> Seq.map (fun x -> x.Value)
 
-    type ArbitrageResult = { Event : MatchedEvent; Discrepancy1 : float; Discrepancy2 : float }
+    type ArbitrageResult = { Event : MatchedEvent; Success : bool; Discrepancy1 : float; Discrepancy2 : float }
 
     let arbitrage ( events : seq<MatchedEvent> ) =
         events 
@@ -84,8 +84,5 @@
 
             let success = discrepancy1 < float 1 || discrepancy2 < float 1
             
-            match success with
-            | true -> Option.Some { Event = e; Discrepancy1 = discrepancy1; Discrepancy2 = discrepancy2 }
-            | false -> Option.None)
-        |> Seq.filter (fun x -> x.IsSome)
-        |> Seq.map (fun x -> x.Value)
+            { Event = e; Success = success; Discrepancy1 = discrepancy1; Discrepancy2 = discrepancy2 })
+        
